@@ -1,0 +1,18 @@
+<?php 
+session_start();
+if(!isset($_SESSION['user']))
+{
+    header("location:logout.php");
+}
+else{
+    $now=time();
+    if($now>$_SESSION['expire_time'])
+    {
+        session_destroy();
+         header("location:logout.php");
+    }
+    else{
+        $_SESSION['expire_time']=time()+(15*60);
+    }
+}
+?>
