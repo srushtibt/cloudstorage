@@ -93,18 +93,24 @@ if (isset($_POST['opn_acc'])) {
     $reg_dir = trim($_POST['rdir']);
     $type = "user";
 
-    // Basic input validation
     if (empty($reg_u) || empty($reg_p) || empty($reg_dir)) {
         echo '<script>alert("All fields are required.");</script>';
     } else {
-        $dir_path = "admin_database/" . $reg_dir;
+        // Use /tmp directory on Render since only it is writable
+        $base_path = "/tmp/admin_database";
+        $dir_path = $base_path . "/" . $reg_dir;
 
-        // Check if directory already exists
+        // Ensure base directory exists
+        if (!file_exists($base_path)) {
+            mkdir($base_path, 0755, true);
+        }
+
+        // Check if specific user directory exists
         if (!file_exists($dir_path)) {
-            // Hash the password for security
+            // Hash the password securely
             $hashed_pass = password_hash($reg_p, PASSWORD_DEFAULT);
 
-            // Use prepared statement to prevent SQL injection
+            // Insert user into database
             $stmt = mysqli_prepare($connection, "INSERT INTO user (user, pass, database_name, type) VALUES (?, ?, ?, ?)");
             mysqli_stmt_bind_param($stmt, "ssss", $reg_u, $hashed_pass, $reg_dir, $type);
             mysqli_stmt_execute($stmt);
@@ -112,13 +118,15 @@ if (isset($_POST['opn_acc'])) {
             // Create user directory
             mkdir($dir_path, 0755, true);
 
-            // Create empty index.php inside the directory
+            // Create index.php in user directory
             $security_path = $dir_path . "/index.php";
             $handle = fopen($security_path, 'w');
-            fwrite($handle, "<?php // Silence is golden ?>");
-            fclose($handle);
+            if ($handle) {
+                fwrite($handle, "<?php // Silence is golden ?>");
+                fclose($handle);
+            }
 
-            // Redirect to login
+            // Redirect back to login
             header("Location: index.php");
             exit();
         } else {
