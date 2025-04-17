@@ -1,7 +1,6 @@
 FROM php:8.2-apache
 
-# Optional: copy your PHP files
-COPY . /var/www/html/
+# Install MySQL extensions for PHP
+RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# Expose the correct port
-EXPOSE 80
+COPY . /var/www/html/
