@@ -1,19 +1,20 @@
-<?php include'connection.php' ?>
+<?php
+ob_start(); // Prevents "headers already sent" errors
+include 'connection.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="HandheldFriendly" content="true">
-    <title>Index</title>
+    <title>Register</title>
     <style type="text/css">
         .header_div {
             background-color: green;
             width: 100%;
             height: 90px;
-
         }
 
         #log_div {
@@ -21,7 +22,6 @@
             margin: auto;
             background-color: white;
             margin-top: 10%;
-            background-color: white;
             padding: 20px;
             text-align: center;
         }
@@ -51,7 +51,6 @@
             height: 70px;
             width: 70px;
         }
-
     </style>
 </head>
 
@@ -62,35 +61,21 @@
                 <form method="post">
                     <table>
                         <tr>
-                            <td colspan="2" style="text-align:center;"><img id="img" src="images//user.png"></td>
+                            <td colspan="2" style="text-align:center;"><img id="img" src="images/user.png"></td>
                         </tr>
-                        <tr>
-                            <td>
-                                <h3>Username</h3>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><input type=text name="ru"></td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <h3>Password</h3>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><input type=password name="rp"></td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <h3>Director Name</h3>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><input type=text name="rdir"></td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="text-align:center;"><br><input name="opn_acc" type=submit value="Open Account"></td>
+                        <tr><td><h3>Username</h3></td></tr>
+                        <tr><td><input type="text" name="ru" required></td></tr>
+                        
+                        <tr><td><h3>Password</h3></td></tr>
+                        <tr><td><input type="password" name="rp" required></td></tr>
+                        
+                        <tr><td><h3>Directory Name</h3></td></tr>
+                        <tr><td><input type="text" name="rdir" required></td></tr>
 
+                        <tr>
+                            <td colspan="2" style="text-align:center;"><br>
+                                <input name="opn_acc" type="submit" value="Open Account">
+                            </td>
                         </tr>
                     </table>
                 </form>
@@ -99,30 +84,47 @@
     </div>
     <div class="footer_div"></div>
 </body>
-
 </html>
 
-<?php 
-    if(isset($_POST['opn_acc']))
-    {
+<?php
+if (isset($_POST['opn_acc'])) {
+    $reg_u = trim($_POST['ru']);
+    $reg_p = trim($_POST['rp']);
+    $reg_dir = trim($_POST['rdir']);
+    $type = "user";
 
-        $reg_u=$_POST['ru'];
-        $reg_p=$_POST['rp'];
-        $reg_dir=$_POST['rdir'];
-        $type="user";
-         if(!file_exists("admin_database/".$reg_dir))
-        {
-        mysqli_query($connection,"insert into user values('$reg_u','$reg_p','$reg_dir','$type')");
-        mkdir("admin_database/".$reg_dir,0755,true);
-       $security_path="admin_database/".trim($reg_dir)."/index.php";
-        $handel=fopen($security_path,'w');
-        fwrite($handel,"");
-        fclose($handel);
-        header("location:index.php");
+    // Basic input validation
+    if (empty($reg_u) || empty($reg_p) || empty($reg_dir)) {
+        echo '<script>alert("All fields are required.");</script>';
+    } else {
+        $dir_path = "admin_database/" . $reg_dir;
+
+        // Check if directory already exists
+        if (!file_exists($dir_path)) {
+            // Hash the password for security
+            $hashed_pass = password_hash($reg_p, PASSWORD_DEFAULT);
+
+            // Use prepared statement to prevent SQL injection
+            $stmt = mysqli_prepare($connection, "INSERT INTO user (user, pass, database_name, type) VALUES (?, ?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, "ssss", $reg_u, $hashed_pass, $reg_dir, $type);
+            mysqli_stmt_execute($stmt);
+
+            // Create user directory
+            mkdir($dir_path, 0755, true);
+
+            // Create empty index.php inside the directory
+            $security_path = $dir_path . "/index.php";
+            $handle = fopen($security_path, 'w');
+            fwrite($handle, "<?php // Silence is golden ?>");
+            fclose($handle);
+
+            // Redirect to login
+            header("Location: index.php");
+            exit();
+        } else {
+            echo '<script>alert("Directory already exists. Choose a different name.");</script>';
         }
-        else{
-            echo '<script>alert("Choose different database name");</script>';
-        }
+    }
 }
-
+ob_end_flush();
 ?>
