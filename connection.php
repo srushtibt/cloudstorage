@@ -1,5 +1,5 @@
 <?php 
-$connection = mysqli_connect("db", "root", "root", "data");
+$connection = mysqli_connect("mysql.railway.internal", "root", "VqGDSftFDKaMgYLFepfLhhWBxYkMoLhs", "railway");
 
 // Optional: basic error check
 if (!$connection) {
