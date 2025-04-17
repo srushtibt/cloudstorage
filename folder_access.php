@@ -1,154 +1,105 @@
 <?php
-include 'security.php';
+ob_start(); // Start output buffering to prevent "headers already sent" errors
+session_start(); // Start session before anything else
+include 'connection.php'; // Include DB connection
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database</title>
-    <style>
-        #file_table {
-            width: 100%;
-            margin-top: 3%;
-            border-collapse: collapse;
-        }
-
-        .file_td {
-            padding: 8px;
-            text-align: center;
-        }
-
-        th {
-            font-size: 22px;
-        }
-
-        .down, .dlt, .cpy {
-            width: 35px;
-            height: 35px;
-            border: none;
-            background-color: transparent;
-            background-repeat: no-repeat;
-            background-size: contain;
-            cursor: pointer;
-        }
-
-        .down { background-image: url(images/direct-download.png); }
-        .dlt { background-image: url(images/trash.png); }
-        .cpy { background-image: url(images/copy.png); }
-
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="HandheldFriendly" content="true">
+    <title>Upload File</title>
+    <style type="text/css">
         .Up_btn {
-            width: 100px;
-            height: 35px;
+            width: 70px;
+            height: 30px;
             background-color: #00bc28;
-            color: white;
             border-radius: 5px;
-            border: none;
-            cursor: pointer;
-        }
-
-        .log_btn {
-            height: 40px;
-            width: 40px;
-            background-image: url(images/iconfinder_exit_17902.ico);
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-color: transparent;
-            border: none;
-            cursor: pointer;
-        }
-
-        h4 {
-            color: green;
+            border-width: 1px;
         }
     </style>
-    <script src="heart.js"></script>
 </head>
 <body>
 
-<div>
-    <h2 style="color: red; font-family: Century Schoolbook;">Cloud Storage
-        <div style="float:right;">
-            <form method="post" action="log_btn_activity.php">
-                <input type="submit" class="log_btn" name="log_btn" value="">
-            </form>
-        </div>
-    </h2>
-</div>
-
-<div style="margin-top:-20px;">
-    <h5>Don't forget to logout after using your database. Your data is precious to us.</h5>
-</div>
-
-<div style="float: right; padding: 20px;">
-    <h4>Upload your file</h4>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="file_to_upload" required>
+<div style="margin-top:20px;">
+    <h4>Upload your file to database</h4>
+    <form method="post" action="?" enctype="multipart/form-data">
+        <input type="file" name="file_to_upload" required>&nbsp;
         <input type="submit" value="Upload" name="upload" class="Up_btn">
     </form>
 </div>
 
 <?php
 $your_database = $_SESSION['database_name'];
-$folder_dist = "admin_database/" . $your_database;
+// Set the persistent volume path on Render (e.g., '/mnt/data')
+$folder_dist = "/mnt/data/admin_database/" . $your_database; // This is the Render persistent volume directory
+
 $_SESSION["database_loc"] = $folder_dist;
 
 if (isset($_POST['upload'])) {
     if ($_FILES['file_to_upload']['size'] != 0) {
         $file = $_FILES['file_to_upload'];
-        $file_name = $file['name'];
-        $file_tmp = $file['tmp_name'];
-        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        $dest = $folder_dist . "/" . $file_name;
+        $file_name = $_FILES['file_to_upload']['name'];
+        $file_type = $_FILES['file_to_upload']['type'];
+        $file_tmp = $_FILES['file_to_upload']['tmp_name'];
+        $file_size = $_FILES['file_to_upload']['size'];
 
+        // Ensure the file extension is allowed
+        $file_extention = explode('.', $file_name);
+        $file_ext = strtolower($file_extention[1]);
+
+        // Allowed file extensions
         $allowed_ext = ["jpeg", "jpg", "png", "bmp", "docx", "doc", "pdf", "zip", "rar", "mdb", "sql", "php", "js", "html", "xlsx", "java", "c", "cpp", "txt"];
 
         if (in_array($file_ext, $allowed_ext)) {
-            if (!is_dir($folder_dist)) {
-                mkdir($folder_dist, 0755, true);
+            // Create directory if it doesn't exist
+            if (!file_exists($folder_dist)) {
+                mkdir($folder_dist, 0777, true); // Create the directory with full permissions
             }
 
+            // Define destination path on the persistent volume
+            $dest = $folder_dist . "/" . $file_name;
+
+            // Remove the file if it already exists
             if (file_exists($dest)) {
                 unlink($dest);
             }
 
-            move_uploaded_file($file_tmp, $dest);
-            echo '<script>alert("Uploaded Successfully");</script>';
+            // Move the uploaded file to the persistent volume
+            if (move_uploaded_file($file_tmp, $dest)) {
+                echo '<script>alert("File uploaded successfully!");</script>';
+            } else {
+                echo '<script>alert("Error uploading file.");</script>';
+            }
         } else {
-            echo '<script>alert("File type not allowed.");</script>';
+            echo '<script>alert("Invalid file type.");</script>';
         }
     } else {
-        echo '<script>alert("No file chosen.");</script>';
+        echo '<script>alert("No file selected.");</script>';
     }
 }
 
-$uploaded_files = is_dir($folder_dist) ? scandir($folder_dist) : [];
-?>
+// Fetch and display the list of uploaded files
+$user_uploaded_files = scandir($folder_dist); // Get all files from the directory
 
-<div style="width: 100%;">
-    <table id="file_table" border="1">
-        <tr><th colspan="2">Files</th></tr>
-        <?php
-        foreach ($uploaded_files as $index => $file) {
-            if (!in_array($file, ['.', '..', 'index.php'])) {
-                echo "
-                <tr>
-                    <td class='file_td' id='file_td$index'>$file</td>
-                    <td class='file_td'>
-                        <table width='100%'>
-                            <tr>
-                                <td><button id='$index' onclick='download_btn_press(this.id)' class='down'></button></td>
-                                <td><button id='$index' onclick='dlt_btn_press(this.id)' class='dlt'></button></td>
-                                <td><button id='$index' onclick='cpy_btn_press(this.id)' class='cpy'></button></td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>";
-            }
-        }
-        ?>
-    </table>
-</div>
+echo '<div style="width:100%"><table border="1" cellspacing="0" cellpadding="5" style="width:100%;">';
+echo '<tr><th colspan="2">Uploaded Files</th></tr>';
+
+foreach ($user_uploaded_files as $file) {
+    if ($file != '.' && $file != '..' && $file != 'index.php') {
+        echo '<tr>';
+        echo '<td>' . $file . '</td>';
+        echo '<td><a href="' . $folder_dist . '/' . $file . '" download>Download</a></td>';
+        echo '</tr>';
+    }
+}
+
+echo '</table></div>';
+
+ob_end_flush(); // End output buffering
+?>
 
 </body>
 </html>
