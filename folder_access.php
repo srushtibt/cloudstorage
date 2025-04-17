@@ -14,7 +14,10 @@ $folder_dist = "/mnt/data/admin_database/" . $your_database; // Path to persiste
 
 // Ensure the directory exists before moving files there
 if (!file_exists($folder_dist)) {
-    mkdir($folder_dist, 0777, true); // Attempt to create the directory with full permissions
+    if (!mkdir($folder_dist, 0777, true)) {
+        echo '<script>alert("Failed to create directory. Please check permissions.");</script>';
+        exit;
+    }
 }
 
 if (isset($_POST['upload'])) {
@@ -49,7 +52,11 @@ if (isset($_POST['upload'])) {
 }
 
 // Fetch and display the list of uploaded files
-$user_uploaded_files = scandir($folder_dist); // Get all files from the directory
+if (file_exists($folder_dist)) {
+    $user_uploaded_files = scandir($folder_dist); // Get all files from the directory
+} else {
+    echo '<script>alert("Directory does not exist.");</script>';
+}
 
 if ($user_uploaded_files !== false) {
     echo '<div style="width:100%"><table border="1" cellspacing="0" cellpadding="5" style="width:100%;">';
@@ -71,4 +78,3 @@ if ($user_uploaded_files !== false) {
 
 ob_end_flush(); // End output buffering
 ?>
-
